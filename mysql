@@ -1,1 +1,208 @@
+-- =================================================================
+-- BAGIAN 0: PENGATURAN DATABASE
+-- =================================================================
+CREATE DATABASE IF NOT EXISTS fp_sbd;
+USE fp_sbd;
 
+
+-- =================================================================
+-- BAGIAN 1: PEMBUATAN SEMUA TABEL
+-- =================================================================
+
+-- Tabel tanpa ketergantungan eksternal
+CREATE TABLE Worker (
+    worker_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    phone VARCHAR(20),
+    role VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Categories (
+    category_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Promotions (
+    promotion_id INT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    discount_type VARCHAR(50) NOT NULL, -- 'PERCENTAGE', 'FIXED_AMOUNT'
+    discount_value DECIMAL(10, 2) NOT NULL,
+    max_discount_amount DECIMAL(10, 2),
+    min_purchase_amount DECIMAL(10, 2) DEFAULT 0.00,
+    start_date DATETIME NOT NULL,
+    end_date DATETIME NOT NULL,
+    usage_limit_per_user INT,
+    total_usage_limit INT,
+    applies_to_all_products BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Shipping_Methods (
+    shipping_method_id INT AUTO_INCREMENT PRIMARY KEY,
+    shipping_name VARCHAR(100) NOT NULL,
+    shipping_cost DECIMAL(10, 2) NOT NULL,
+    estimated_del_time_text VARCHAR(255),
+    estimated_del_time_min INT,
+    estimated_del_time_max INT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Tabel yang memiliki ketergantungan
+CREATE TABLE Products (
+    product_id INT AUTO_INCREMENT PRIMARY KEY,
+    worker_id INT, -- Bisa NULL jika dikelola sistem
+    category_id INT,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    base_price DECIMAL(10, 2) NOT NULL,
+    base_stock INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Product_Variations (
+    variation_id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT NOT NULL,
+    variation_name VARCHAR(100) NOT NULL, -- Contoh: 'Warna', 'Ukuran'
+    variation_sku VARCHAR(100) UNIQUE,
+    stock_quantity INT NOT NULL,
+    price_override DECIMAL(10, 2), -- NULL jika harga sama dengan produk dasar
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Consumer (
+    Consumer_ID INT AUTO_INCREMENT PRIMARY KEY,
+    shipping_address_id INT, -- Dibuat NULLable untuk mengatasi dependensi siklis
+    payment_method_id INT, -- Dibuat NULLable untuk mengatasi dependensi siklis
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    phone VARCHAR(20),
+    is_member BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Shipping_Address (
+    Shipping_Address_ID INT AUTO_INCREMENT PRIMARY KEY,
+    consumer_id INT NOT NULL,
+    recipient_name VARCHAR(255) NOT NULL,
+    phone_number VARCHAR(20) NOT NULL,
+    address_line1 VARCHAR(255) NOT NULL,
+    address_line2 VARCHAR(255),
+    city VARCHAR(100) NOT NULL,
+    province VARCHAR(100) NOT NULL,
+    postal_code VARCHAR(10) NOT NULL,
+    country VARCHAR(100) NOT NULL DEFAULT 'Indonesia',
+    is_default_shipping BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Payment_Methods (
+    Payment_method_id INT AUTO_INCREMENT PRIMARY KEY,
+    consumer_id INT NOT NULL,
+    method_type VARCHAR(50) NOT NULL,
+    details TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE `Order` (
+    order_id INT AUTO_INCREMENT PRIMARY KEY,
+    consumer_id INT NOT NULL,
+    shipping_method_id INT NOT NULL,
+    promotion_id INT,
+    order_date TIMESTAMP NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    grand_total DECIMAL(10, 2) NOT NULL,
+    subtotal_amount DECIMAL(10, 2) NOT NULL,
+    discount_amount DECIMAL(10, 2) DEFAULT 0.00,
+    payment_method_snapshot TEXT,
+    shipping_address_snapshot TEXT,
+    shipping_costs_charged DECIMAL(10, 2) NOT NULL,
+    payment_transaction_id VARCHAR(255),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Order_Item (
+    order_item_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    variation_id INT,
+    quantity INT NOT NULL,
+    price_per_unit_snapshot DECIMAL(10, 2) NOT NULL,
+    product_name_snapshot VARCHAR(255) NOT NULL,
+    variation_name_snapshot VARCHAR(255),
+    total_price_for_item DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Tabel Junction (Tabel Penghubung)
+CREATE TABLE promotion_product (
+    promotion_id INT NOT NULL,
+    product_id INT NOT NULL,
+    PRIMARY KEY (promotion_id, product_id)
+);
+
+CREATE TABLE promotion_category (
+    promotion_id INT NOT NULL,
+    category_id INT NOT NULL,
+    PRIMARY KEY (promotion_id, category_id)
+);
+
+
+-- =================================================================
+-- BAGIAN 2: PENAMBAHAN SEMUA FOREIGN KEY
+-- =================================================================
+
+ALTER TABLE Products
+    ADD CONSTRAINT fk_products_worker FOREIGN KEY (worker_id) REFERENCES Worker(worker_id) ON DELETE SET NULL,
+    ADD CONSTRAINT fk_products_category FOREIGN KEY (category_id) REFERENCES Categories(category_id) ON DELETE SET NULL;
+
+ALTER TABLE Product_Variations
+    ADD CONSTRAINT fk_variations_product FOREIGN KEY (product_id) REFERENCES Products(product_id) ON DELETE CASCADE;
+
+ALTER TABLE Shipping_Address
+    ADD CONSTRAINT fk_address_consumer FOREIGN KEY (consumer_id) REFERENCES Consumer(Consumer_ID) ON DELETE CASCADE;
+
+ALTER TABLE Payment_Methods
+    ADD CONSTRAINT fk_payment_consumer FOREIGN KEY (consumer_id) REFERENCES Consumer(Consumer_ID) ON DELETE CASCADE;
+
+ALTER TABLE Consumer
+    ADD CONSTRAINT fk_consumer_shipping_address FOREIGN KEY (shipping_address_id) REFERENCES Shipping_Address(Shipping_Address_ID) ON DELETE SET NULL,
+    ADD CONSTRAINT fk_consumer_payment_method FOREIGN KEY (payment_method_id) REFERENCES Payment_Methods(Payment_method_id) ON DELETE SET NULL;
+
+ALTER TABLE `Order`
+    ADD CONSTRAINT fk_order_consumer FOREIGN KEY (consumer_id) REFERENCES Consumer(Consumer_ID) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_order_shipping_method FOREIGN KEY (shipping_method_id) REFERENCES Shipping_Methods(shipping_method_id) ON DELETE RESTRICT,
+    ADD CONSTRAINT fk_order_promotion FOREIGN KEY (promotion_id) REFERENCES Promotions(promotion_id) ON DELETE SET NULL;
+
+ALTER TABLE Order_Item
+    ADD CONSTRAINT fk_orderitem_order FOREIGN KEY (order_id) REFERENCES `Order`(order_id) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_orderitem_product FOREIGN KEY (product_id) REFERENCES Products(product_id) ON DELETE RESTRICT,
+    ADD CONSTRAINT fk_orderitem_variation FOREIGN KEY (variation_id) REFERENCES Product_Variations(variation_id) ON DELETE RESTRICT;
+
+ALTER TABLE promotion_product
+    ADD CONSTRAINT fk_promoproduct_promotion FOREIGN KEY (promotion_id) REFERENCES Promotions(promotion_id) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_promoproduct_product FOREIGN KEY (product_id) REFERENCES Products(product_id) ON DELETE CASCADE;
+
+ALTER TABLE promotion_category
+    ADD CONSTRAINT fk_promocategory_promotion FOREIGN KEY (promotion_id) REFERENCES Promotions(promotion_id) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_promocategory_category FOREIGN KEY (category_id) REFERENCES Categories(category_id) ON DELETE CASCADE;
