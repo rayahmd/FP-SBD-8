@@ -1,0 +1,8 @@
+
+# install dulu
+
+mysql-connector-python
+pymongo
+tabulate
+
+# pip install -r requirements.txt
