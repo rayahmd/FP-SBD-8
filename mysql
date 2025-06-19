@@ -1,208 +1,495 @@
--- =================================================================
--- BAGIAN 0: PENGATURAN DATABASE
--- =================================================================
-CREATE DATABASE IF NOT EXISTS fp_sbd;
-USE fp_sbd;
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Host: 127.0.0.1
+-- Waktu pembuatan: 19 Jun 2025 pada 17.40
+-- Versi server: 10.4.32-MariaDB
+-- Versi PHP: 8.2.12
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
 
 
--- =================================================================
--- BAGIAN 1: PEMBUATAN SEMUA TABEL
--- =================================================================
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
 
--- Tabel tanpa ketergantungan eksternal
-CREATE TABLE Worker (
-    worker_id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    phone VARCHAR(20),
-    role VARCHAR(50) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+--
+-- Database: `fp_sbd`
+--
 
-CREATE TABLE Categories (
-    category_id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+-- --------------------------------------------------------
 
-CREATE TABLE Promotions (
-    promotion_id INT AUTO_INCREMENT PRIMARY KEY,
-    code VARCHAR(50) NOT NULL UNIQUE,
-    description TEXT,
-    discount_type VARCHAR(50) NOT NULL, -- 'PERCENTAGE', 'FIXED_AMOUNT'
-    discount_value DECIMAL(10, 2) NOT NULL,
-    max_discount_amount DECIMAL(10, 2),
-    min_purchase_amount DECIMAL(10, 2) DEFAULT 0.00,
-    start_date DATETIME NOT NULL,
-    end_date DATETIME NOT NULL,
-    usage_limit_per_user INT,
-    total_usage_limit INT,
-    applies_to_all_products BOOLEAN DEFAULT FALSE,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+--
+-- Struktur dari tabel `categories`
+--
 
-CREATE TABLE Shipping_Methods (
-    shipping_method_id INT AUTO_INCREMENT PRIMARY KEY,
-    shipping_name VARCHAR(100) NOT NULL,
-    shipping_cost DECIMAL(10, 2) NOT NULL,
-    estimated_del_time_text VARCHAR(255),
-    estimated_del_time_min INT,
-    estimated_del_time_max INT,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+CREATE TABLE `categories` (
+  `category_id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Tabel yang memiliki ketergantungan
-CREATE TABLE Products (
-    product_id INT AUTO_INCREMENT PRIMARY KEY,
-    worker_id INT, -- Bisa NULL jika dikelola sistem
-    category_id INT,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    base_price DECIMAL(10, 2) NOT NULL,
-    base_stock INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+-- --------------------------------------------------------
 
-CREATE TABLE Product_Variations (
-    variation_id INT AUTO_INCREMENT PRIMARY KEY,
-    product_id INT NOT NULL,
-    variation_name VARCHAR(100) NOT NULL, -- Contoh: 'Warna', 'Ukuran'
-    variation_sku VARCHAR(100) UNIQUE,
-    stock_quantity INT NOT NULL,
-    price_override DECIMAL(10, 2), -- NULL jika harga sama dengan produk dasar
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+--
+-- Struktur dari tabel `consumer`
+--
 
-CREATE TABLE Consumer (
-    Consumer_ID INT AUTO_INCREMENT PRIMARY KEY,
-    shipping_address_id INT, -- Dibuat NULLable untuk mengatasi dependensi siklis
-    payment_method_id INT, -- Dibuat NULLable untuk mengatasi dependensi siklis
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    phone VARCHAR(20),
-    is_member BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+CREATE TABLE `consumer` (
+  `Consumer_ID` int(11) NOT NULL,
+  `shipping_address_id` int(11) DEFAULT NULL,
+  `payment_method_id` int(11) DEFAULT NULL,
+  `name` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `is_member` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE Shipping_Address (
-    Shipping_Address_ID INT AUTO_INCREMENT PRIMARY KEY,
-    consumer_id INT NOT NULL,
-    recipient_name VARCHAR(255) NOT NULL,
-    phone_number VARCHAR(20) NOT NULL,
-    address_line1 VARCHAR(255) NOT NULL,
-    address_line2 VARCHAR(255),
-    city VARCHAR(100) NOT NULL,
-    province VARCHAR(100) NOT NULL,
-    postal_code VARCHAR(10) NOT NULL,
-    country VARCHAR(100) NOT NULL DEFAULT 'Indonesia',
-    is_default_shipping BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+-- --------------------------------------------------------
 
-CREATE TABLE Payment_Methods (
-    Payment_method_id INT AUTO_INCREMENT PRIMARY KEY,
-    consumer_id INT NOT NULL,
-    method_type VARCHAR(50) NOT NULL,
-    details TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+--
+-- Struktur dari tabel `order`
+--
 
-CREATE TABLE `Order` (
-    order_id INT AUTO_INCREMENT PRIMARY KEY,
-    consumer_id INT NOT NULL,
-    shipping_method_id INT NOT NULL,
-    promotion_id INT,
-    order_date TIMESTAMP NOT NULL,
-    status VARCHAR(50) NOT NULL,
-    grand_total DECIMAL(10, 2) NOT NULL,
-    subtotal_amount DECIMAL(10, 2) NOT NULL,
-    discount_amount DECIMAL(10, 2) DEFAULT 0.00,
-    payment_method_snapshot TEXT,
-    shipping_address_snapshot TEXT,
-    shipping_costs_charged DECIMAL(10, 2) NOT NULL,
-    payment_transaction_id VARCHAR(255),
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+CREATE TABLE `order` (
+  `order_id` int(11) NOT NULL,
+  `consumer_id` int(11) NOT NULL,
+  `shipping_method_id` int(11) NOT NULL,
+  `promotion_id` int(11) DEFAULT NULL,
+  `order_date` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `status` varchar(50) NOT NULL,
+  `grand_total` decimal(10,2) NOT NULL,
+  `subtotal_amount` decimal(10,2) NOT NULL,
+  `discount_amount` decimal(10,2) DEFAULT 0.00,
+  `payment_method_snapshot` text DEFAULT NULL,
+  `shipping_address_snapshot` text DEFAULT NULL,
+  `shipping_costs_charged` decimal(10,2) NOT NULL,
+  `payment_transaction_id` varchar(255) DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE Order_Item (
-    order_item_id INT AUTO_INCREMENT PRIMARY KEY,
-    order_id INT NOT NULL,
-    product_id INT NOT NULL,
-    variation_id INT,
-    quantity INT NOT NULL,
-    price_per_unit_snapshot DECIMAL(10, 2) NOT NULL,
-    product_name_snapshot VARCHAR(255) NOT NULL,
-    variation_name_snapshot VARCHAR(255),
-    total_price_for_item DECIMAL(10, 2) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+-- --------------------------------------------------------
 
--- Tabel Junction (Tabel Penghubung)
-CREATE TABLE promotion_product (
-    promotion_id INT NOT NULL,
-    product_id INT NOT NULL,
-    PRIMARY KEY (promotion_id, product_id)
-);
+--
+-- Struktur dari tabel `order_item`
+--
 
-CREATE TABLE promotion_category (
-    promotion_id INT NOT NULL,
-    category_id INT NOT NULL,
-    PRIMARY KEY (promotion_id, category_id)
-);
+CREATE TABLE `order_item` (
+  `order_item_id` int(11) NOT NULL,
+  `order_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `variation_id` int(11) DEFAULT NULL,
+  `quantity` int(11) NOT NULL,
+  `price_per_unit_snapshot` decimal(10,2) NOT NULL,
+  `product_name_snapshot` varchar(255) NOT NULL,
+  `variation_name_snapshot` varchar(255) DEFAULT NULL,
+  `total_price_for_item` decimal(10,2) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
 
--- =================================================================
--- BAGIAN 2: PENAMBAHAN SEMUA FOREIGN KEY
--- =================================================================
+--
+-- Struktur dari tabel `payment_methods`
+--
 
-ALTER TABLE Products
-    ADD CONSTRAINT fk_products_worker FOREIGN KEY (worker_id) REFERENCES Worker(worker_id) ON DELETE SET NULL,
-    ADD CONSTRAINT fk_products_category FOREIGN KEY (category_id) REFERENCES Categories(category_id) ON DELETE SET NULL;
+CREATE TABLE `payment_methods` (
+  `Payment_method_id` int(11) NOT NULL,
+  `consumer_id` int(11) NOT NULL,
+  `method_type` varchar(50) NOT NULL,
+  `details` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-ALTER TABLE Product_Variations
-    ADD CONSTRAINT fk_variations_product FOREIGN KEY (product_id) REFERENCES Products(product_id) ON DELETE CASCADE;
+-- --------------------------------------------------------
 
-ALTER TABLE Shipping_Address
-    ADD CONSTRAINT fk_address_consumer FOREIGN KEY (consumer_id) REFERENCES Consumer(Consumer_ID) ON DELETE CASCADE;
+--
+-- Struktur dari tabel `products`
+--
 
-ALTER TABLE Payment_Methods
-    ADD CONSTRAINT fk_payment_consumer FOREIGN KEY (consumer_id) REFERENCES Consumer(Consumer_ID) ON DELETE CASCADE;
+CREATE TABLE `products` (
+  `product_id` int(11) NOT NULL,
+  `worker_id` int(11) DEFAULT NULL,
+  `category_id` int(11) DEFAULT NULL,
+  `name` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `base_price` decimal(10,2) NOT NULL,
+  `base_stock` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-ALTER TABLE Consumer
-    ADD CONSTRAINT fk_consumer_shipping_address FOREIGN KEY (shipping_address_id) REFERENCES Shipping_Address(Shipping_Address_ID) ON DELETE SET NULL,
-    ADD CONSTRAINT fk_consumer_payment_method FOREIGN KEY (payment_method_id) REFERENCES Payment_Methods(Payment_method_id) ON DELETE SET NULL;
+-- --------------------------------------------------------
 
-ALTER TABLE `Order`
-    ADD CONSTRAINT fk_order_consumer FOREIGN KEY (consumer_id) REFERENCES Consumer(Consumer_ID) ON DELETE CASCADE,
-    ADD CONSTRAINT fk_order_shipping_method FOREIGN KEY (shipping_method_id) REFERENCES Shipping_Methods(shipping_method_id) ON DELETE RESTRICT,
-    ADD CONSTRAINT fk_order_promotion FOREIGN KEY (promotion_id) REFERENCES Promotions(promotion_id) ON DELETE SET NULL;
+--
+-- Struktur dari tabel `product_variations`
+--
 
-ALTER TABLE Order_Item
-    ADD CONSTRAINT fk_orderitem_order FOREIGN KEY (order_id) REFERENCES `Order`(order_id) ON DELETE CASCADE,
-    ADD CONSTRAINT fk_orderitem_product FOREIGN KEY (product_id) REFERENCES Products(product_id) ON DELETE RESTRICT,
-    ADD CONSTRAINT fk_orderitem_variation FOREIGN KEY (variation_id) REFERENCES Product_Variations(variation_id) ON DELETE RESTRICT;
+CREATE TABLE `product_variations` (
+  `variation_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `variation_name` varchar(100) NOT NULL,
+  `variation_sku` varchar(100) DEFAULT NULL,
+  `stock_quantity` int(11) NOT NULL,
+  `price_override` decimal(10,2) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-ALTER TABLE promotion_product
-    ADD CONSTRAINT fk_promoproduct_promotion FOREIGN KEY (promotion_id) REFERENCES Promotions(promotion_id) ON DELETE CASCADE,
-    ADD CONSTRAINT fk_promoproduct_product FOREIGN KEY (product_id) REFERENCES Products(product_id) ON DELETE CASCADE;
+-- --------------------------------------------------------
 
-ALTER TABLE promotion_category
-    ADD CONSTRAINT fk_promocategory_promotion FOREIGN KEY (promotion_id) REFERENCES Promotions(promotion_id) ON DELETE CASCADE,
-    ADD CONSTRAINT fk_promocategory_category FOREIGN KEY (category_id) REFERENCES Categories(category_id) ON DELETE CASCADE;
+--
+-- Struktur dari tabel `promotions`
+--
+
+CREATE TABLE `promotions` (
+  `promotion_id` int(11) NOT NULL,
+  `code` varchar(50) NOT NULL,
+  `description` text DEFAULT NULL,
+  `discount_type` varchar(50) NOT NULL,
+  `discount_value` decimal(10,2) NOT NULL,
+  `max_discount_amount` decimal(10,2) DEFAULT NULL,
+  `min_purchase_amount` decimal(10,2) DEFAULT 0.00,
+  `start_date` datetime NOT NULL,
+  `end_date` datetime NOT NULL,
+  `usage_limit_per_user` int(11) DEFAULT NULL,
+  `total_usage_limit` int(11) DEFAULT NULL,
+  `applies_to_all_products` tinyint(1) DEFAULT 0,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Struktur dari tabel `promotion_category`
+--
+
+CREATE TABLE `promotion_category` (
+  `promotion_id` int(11) NOT NULL,
+  `category_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Struktur dari tabel `promotion_product`
+--
+
+CREATE TABLE `promotion_product` (
+  `promotion_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Struktur dari tabel `shipping_address`
+--
+
+CREATE TABLE `shipping_address` (
+  `Shipping_Address_ID` int(11) NOT NULL,
+  `consumer_id` int(11) NOT NULL,
+  `recipient_name` varchar(255) NOT NULL,
+  `phone_number` varchar(20) NOT NULL,
+  `address_line1` varchar(255) NOT NULL,
+  `address_line2` varchar(255) DEFAULT NULL,
+  `city` varchar(100) NOT NULL,
+  `province` varchar(100) NOT NULL,
+  `postal_code` varchar(10) NOT NULL,
+  `country` varchar(100) NOT NULL DEFAULT 'Indonesia',
+  `is_default_shipping` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Struktur dari tabel `shipping_methods`
+--
+
+CREATE TABLE `shipping_methods` (
+  `shipping_method_id` int(11) NOT NULL,
+  `shipping_name` varchar(100) NOT NULL,
+  `shipping_cost` decimal(10,2) NOT NULL,
+  `estimated_del_time_text` varchar(255) DEFAULT NULL,
+  `estimated_del_time_min` int(11) DEFAULT NULL,
+  `estimated_del_time_max` int(11) DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Struktur dari tabel `worker`
+--
+
+CREATE TABLE `worker` (
+  `worker_id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `role` varchar(50) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indeks untuk tabel `categories`
+--
+ALTER TABLE `categories`
+  ADD PRIMARY KEY (`category_id`);
+
+--
+-- Indeks untuk tabel `consumer`
+--
+ALTER TABLE `consumer`
+  ADD PRIMARY KEY (`Consumer_ID`),
+  ADD UNIQUE KEY `email` (`email`),
+  ADD KEY `fk_consumer_shipping_address` (`shipping_address_id`),
+  ADD KEY `fk_consumer_payment_method` (`payment_method_id`);
+
+--
+-- Indeks untuk tabel `order`
+--
+ALTER TABLE `order`
+  ADD PRIMARY KEY (`order_id`),
+  ADD KEY `fk_order_consumer` (`consumer_id`),
+  ADD KEY `fk_order_shipping_method` (`shipping_method_id`),
+  ADD KEY `fk_order_promotion` (`promotion_id`);
+
+--
+-- Indeks untuk tabel `order_item`
+--
+ALTER TABLE `order_item`
+  ADD PRIMARY KEY (`order_item_id`),
+  ADD KEY `fk_orderitem_order` (`order_id`),
+  ADD KEY `fk_orderitem_product` (`product_id`),
+  ADD KEY `fk_orderitem_variation` (`variation_id`);
+
+--
+-- Indeks untuk tabel `payment_methods`
+--
+ALTER TABLE `payment_methods`
+  ADD PRIMARY KEY (`Payment_method_id`),
+  ADD KEY `fk_payment_consumer` (`consumer_id`);
+
+--
+-- Indeks untuk tabel `products`
+--
+ALTER TABLE `products`
+  ADD PRIMARY KEY (`product_id`),
+  ADD KEY `fk_products_worker` (`worker_id`),
+  ADD KEY `fk_products_category` (`category_id`);
+
+--
+-- Indeks untuk tabel `product_variations`
+--
+ALTER TABLE `product_variations`
+  ADD PRIMARY KEY (`variation_id`),
+  ADD UNIQUE KEY `variation_sku` (`variation_sku`),
+  ADD KEY `fk_variations_product` (`product_id`);
+
+--
+-- Indeks untuk tabel `promotions`
+--
+ALTER TABLE `promotions`
+  ADD PRIMARY KEY (`promotion_id`),
+  ADD UNIQUE KEY `code` (`code`);
+
+--
+-- Indeks untuk tabel `promotion_category`
+--
+ALTER TABLE `promotion_category`
+  ADD PRIMARY KEY (`promotion_id`,`category_id`),
+  ADD KEY `fk_promocategory_category` (`category_id`);
+
+--
+-- Indeks untuk tabel `promotion_product`
+--
+ALTER TABLE `promotion_product`
+  ADD PRIMARY KEY (`promotion_id`,`product_id`),
+  ADD KEY `fk_promoproduct_product` (`product_id`);
+
+--
+-- Indeks untuk tabel `shipping_address`
+--
+ALTER TABLE `shipping_address`
+  ADD PRIMARY KEY (`Shipping_Address_ID`),
+  ADD KEY `fk_address_consumer` (`consumer_id`);
+
+--
+-- Indeks untuk tabel `shipping_methods`
+--
+ALTER TABLE `shipping_methods`
+  ADD PRIMARY KEY (`shipping_method_id`);
+
+--
+-- Indeks untuk tabel `worker`
+--
+ALTER TABLE `worker`
+  ADD PRIMARY KEY (`worker_id`),
+  ADD UNIQUE KEY `email` (`email`);
+
+--
+-- AUTO_INCREMENT untuk tabel yang dibuang
+--
+
+--
+-- AUTO_INCREMENT untuk tabel `categories`
+--
+ALTER TABLE `categories`
+  MODIFY `category_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT untuk tabel `consumer`
+--
+ALTER TABLE `consumer`
+  MODIFY `Consumer_ID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT untuk tabel `order`
+--
+ALTER TABLE `order`
+  MODIFY `order_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT untuk tabel `order_item`
+--
+ALTER TABLE `order_item`
+  MODIFY `order_item_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT untuk tabel `payment_methods`
+--
+ALTER TABLE `payment_methods`
+  MODIFY `Payment_method_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT untuk tabel `products`
+--
+ALTER TABLE `products`
+  MODIFY `product_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT untuk tabel `product_variations`
+--
+ALTER TABLE `product_variations`
+  MODIFY `variation_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT untuk tabel `promotions`
+--
+ALTER TABLE `promotions`
+  MODIFY `promotion_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT untuk tabel `shipping_address`
+--
+ALTER TABLE `shipping_address`
+  MODIFY `Shipping_Address_ID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT untuk tabel `shipping_methods`
+--
+ALTER TABLE `shipping_methods`
+  MODIFY `shipping_method_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT untuk tabel `worker`
+--
+ALTER TABLE `worker`
+  MODIFY `worker_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- Ketidakleluasaan untuk tabel pelimpahan (Dumped Tables)
+--
+
+--
+-- Ketidakleluasaan untuk tabel `consumer`
+--
+ALTER TABLE `consumer`
+  ADD CONSTRAINT `fk_consumer_payment_method` FOREIGN KEY (`payment_method_id`) REFERENCES `payment_methods` (`Payment_method_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_consumer_shipping_address` FOREIGN KEY (`shipping_address_id`) REFERENCES `shipping_address` (`Shipping_Address_ID`) ON DELETE SET NULL;
+
+--
+-- Ketidakleluasaan untuk tabel `order`
+--
+ALTER TABLE `order`
+  ADD CONSTRAINT `fk_order_consumer` FOREIGN KEY (`consumer_id`) REFERENCES `consumer` (`Consumer_ID`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_order_promotion` FOREIGN KEY (`promotion_id`) REFERENCES `promotions` (`promotion_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_order_shipping_method` FOREIGN KEY (`shipping_method_id`) REFERENCES `shipping_methods` (`shipping_method_id`);
+
+--
+-- Ketidakleluasaan untuk tabel `order_item`
+--
+ALTER TABLE `order_item`
+  ADD CONSTRAINT `fk_orderitem_order` FOREIGN KEY (`order_id`) REFERENCES `order` (`order_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_orderitem_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`),
+  ADD CONSTRAINT `fk_orderitem_variation` FOREIGN KEY (`variation_id`) REFERENCES `product_variations` (`variation_id`);
+
+--
+-- Ketidakleluasaan untuk tabel `payment_methods`
+--
+ALTER TABLE `payment_methods`
+  ADD CONSTRAINT `fk_payment_consumer` FOREIGN KEY (`consumer_id`) REFERENCES `consumer` (`Consumer_ID`) ON DELETE CASCADE;
+
+--
+-- Ketidakleluasaan untuk tabel `products`
+--
+ALTER TABLE `products`
+  ADD CONSTRAINT `fk_products_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`category_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_products_worker` FOREIGN KEY (`worker_id`) REFERENCES `worker` (`worker_id`) ON DELETE SET NULL;
+
+--
+-- Ketidakleluasaan untuk tabel `product_variations`
+--
+ALTER TABLE `product_variations`
+  ADD CONSTRAINT `fk_variations_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`) ON DELETE CASCADE;
+
+--
+-- Ketidakleluasaan untuk tabel `promotion_category`
+--
+ALTER TABLE `promotion_category`
+  ADD CONSTRAINT `fk_promocategory_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`category_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_promocategory_promotion` FOREIGN KEY (`promotion_id`) REFERENCES `promotions` (`promotion_id`) ON DELETE CASCADE;
+
+--
+-- Ketidakleluasaan untuk tabel `promotion_product`
+--
+ALTER TABLE `promotion_product`
+  ADD CONSTRAINT `fk_promoproduct_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_promoproduct_promotion` FOREIGN KEY (`promotion_id`) REFERENCES `promotions` (`promotion_id`) ON DELETE CASCADE;
+
+--
+-- Ketidakleluasaan untuk tabel `shipping_address`
+--
+ALTER TABLE `shipping_address`
+  ADD CONSTRAINT `fk_address_consumer` FOREIGN KEY (`consumer_id`) REFERENCES `consumer` (`Consumer_ID`) ON DELETE CASCADE;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
