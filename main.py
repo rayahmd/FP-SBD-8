@@ -787,6 +787,7 @@ def checkout(conn, mongo_db, consumer_id):
         if input("Lanjutkan pembayaran (y/n)? ").lower() != 'y': return
 
         # Fase 4: Transaksi utama (semua INSERT/UPDATE) dalam satu blok cursor terisolasi.
+        conn.rollback() #fix bug transaction processed
         conn.start_transaction()
         with conn.cursor(buffered=True, dictionary=True) as cursor:
             query_snapshot = """
@@ -821,7 +822,8 @@ def checkout(conn, mongo_db, consumer_id):
     except (ValueError, Error, Exception) as e:
         print(f"\n[!] Checkout GAGAL: {e}")
         if conn and conn.is_connected():
-            try: conn.rollback()
+            try: 
+                conn.rollback()
             except Error as rb_error: print(f"[!] Gagal melakukan rollback: {rb_error}")
     # 'finally' tidak lagi diperlukan karena 'with' sudah menangani penutupan cursor secara otomatis.
             
@@ -843,6 +845,22 @@ def view_purchase_history(conn, consumer_id):
     finally:
         if cursor: cursor.close()
     input("\nTekan Enter...")
+    
+def get_next_sequence_value(sequence_name, mongo_db):
+    # Coba cari dan update dokumen penghitung
+    sequence_document = mongo_db["counters"].find_one_and_update(
+        {"_id": sequence_name},
+        {"$inc": {"sequence_value": 1}},
+        return_document=pymongo.ReturnDocument.AFTER,
+        upsert=True  # Buat dokumen baru jika tidak ada
+    )
+    
+    # Jika dokumen baru dibuat, inisialisasi dengan sequence_value = 1
+    if not sequence_document:
+        mongo_db["counters"].insert_one({"_id": sequence_name, "sequence_value": 1})
+        return 1
+    
+    return sequence_document["sequence_value"]
 
 def add_review(conn, mongo_db, consumer_id):
     clear_screen()
@@ -894,7 +912,9 @@ def add_review(conn, mongo_db, consumer_id):
         if existing_review:
             print("\n[!] Anda sudah pernah memberikan ulasan untuk produk ini.")
         else:
+            review_id = get_next_sequence_value("review_id", mongo_db)
             review_data = {
+                "_id": review_id,
                 "id_produk_sql": product_id, 
                 "id_konsumen_sql": consumer_id, 
                 "rating": rating, 
@@ -977,8 +997,10 @@ def login_user(conn, role_type):
         print(f"Error: {e}"); return None
 
 def main():
-    db_conn = get_db_connection(DB_CONFIG); mongo_db = get_mongo_client(MONGO_URI, MONGO_DB_NAME)
-    if db_conn is None or mongo_db is None: print("Koneksi database gagal. Aplikasi berhenti."); return
+    db_conn = get_db_connection(DB_CONFIG)
+    mongo_db = get_mongo_client(MONGO_URI, MONGO_DB_NAME)
+    if db_conn is None or mongo_db is None: 
+        print("Koneksi database gagal. Aplikasi berhenti."); return
     while True:
         clear_screen(); print("\n===== SELAMAT DATANG DI APLIKASI E-COMMERCE ====="); print("1. Register Konsumen"); print("2. Login Konsumen"); print("3. Register Worker"); print("4. Login Worker"); print("5. Keluar")
         choice = input("Pilih: ")
